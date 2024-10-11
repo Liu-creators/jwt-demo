@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JWT Demo with Refresh</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+<h1>JWT Demo with Refresh</h1>
+<div id="login">
+    <h2>Login</h2>
+    <input type="text" id="username" placeholder="Username">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+</div>
+<div id="resource" style="display: none;">
+    <h2>Protected Resource</h2>
+    <button onclick="getResource()">Get Resource</button>
+    <p id="result"></p>
+</div>
+
+<script>
+    let accessToken = '';
+    let refreshToken = '';
+
+    const axiosInstance = axios.create();
+
+    // 添加响应拦截器来处理token刷新
+    axiosInstance.interceptors.response.use(
+        (response) => response,
+        async (error) => {
+            const originalRequest = error.config;
+            if (error.response.status === 401 && !originalRequest._retry) {
+                originalRequest._retry = true;
+                try {
+                    const refreshResponse = await axios.post('http://localhost:8080/refresh', {}, {
+                        headers: { 'Authorization': `Bearer ${refreshToken}` }
+                    });
+                    accessToken = refreshResponse.data.accessToken;
+                    originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
+                    return axiosInstance(originalRequest);
+                } catch (refreshError) {
+                    console.error('Token refresh failed:', refreshError);
+                    logout();
+                    return Promise.reject(refreshError);
+                }
+            }
+            return Promise.reject(error);
+        }
+    );
+
+    async function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        try {
+            const response = await axios.post('http://localhost:8080/authenticate', { username, password });
+            accessToken = response.data.accessToken;
+            refreshToken = response.data.refreshToken;
+            document.getElementById('login').style.display = 'none';
+            document.getElementById('resource').style.display = 'block';
+        } catch (error) {
+            console.error('Login failed:', error);
+            alert('Login failed. Please check your credentials.');
+        }
+    }
+
+    async function getResource() {
+        try {
+            const response = await axiosInstance.get('http://localhost:8080/hello', {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            document.getElementById('result').innerText = response.data;
+        } catch (error) {
+            console.error('Failed to get resource:', error);
+            alert('Failed to get resource. Please try logging in again.');
+        }
+    }
+
+    function logout() {
+        accessToken = '';
+        refreshToken = '';
+        document.getElementById('login').style.display = 'block';
+        document.getElementById('resource').style.display = 'none';
+        document.getElementById('result').innerText = '';
+    }
+</script>
+</body>
+</html>

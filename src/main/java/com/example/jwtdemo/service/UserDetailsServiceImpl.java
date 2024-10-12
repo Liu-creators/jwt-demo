@@ -18,21 +18,21 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Autowired
     private UserRepository userRepository; // 假设你有一个 UserRepository 来访问用户数据
 
-    @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException{
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
-
-        return new org.springframework.security.core.userdetails.User(
-                user.getUsername(),
-                user.getPassword(),
-                getAuthorities(user.getRoles()) // 假设 User 实体有一个 getRoles 方法
-        );
-    }
-
-    private Collection<? extends GrantedAuthority> getAuthorities(Collection<String> roles) {
-        return roles.stream()
-                .map(SimpleGrantedAuthority::new)
-                .collect(Collectors.toList());
-    }
+//    @Override
+//    public UserDetails loadUserByUsername(String username){
+//        User user = userRepository.findByUsername(username)
+//                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
+//
+//        return new org.springframework.security.core.userdetails.User(
+//                user.getUsername(),
+//                user.getPassword(),
+//                getAuthorities(user.getRoles())
+//        );
+//    }
+//
+//    private Collection<? extends GrantedAuthority> getAuthorities(Collection<String> roles) {
+//        return roles.stream()
+//                .map(SimpleGrantedAuthority::new)
+//                .collect(Collectors.toList());
+//    }
 }

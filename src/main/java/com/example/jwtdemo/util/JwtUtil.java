@@ -1,9 +1,6 @@
 package com.example.jwtdemo.util;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -81,11 +78,16 @@ public class JwtUtil {
                 .signWith(SignatureAlgorithm.HS256, refreshSecret).compact();
     }
 
-    public Boolean validateRefreshToken(String token) {
+    // 用于验证刷新令牌的方法
+    public boolean validateRefreshToken(String token) {
         try {
             Jwts.parser().setSigningKey(refreshSecret).parseClaimsJws(token);
             return true;
+        } catch (ExpiredJwtException e) {
+            // 令牌已过期
+            return false;
         } catch (JwtException | IllegalArgumentException e) {
+            // 令牌无效
             return false;
         }
     }
@@ -106,6 +108,24 @@ public class JwtUtil {
     public String generateTokenFromRefreshToken(String refreshToken) {
         String username = extractUsernameFromRefreshToken(refreshToken);
         Map<String, Object> claims = new HashMap<>();
-        return createToken(claims, username);
+        return createAccessToken(claims, username);
     }
+
+    public String getUsernameFromRefreshToken(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .setSigningKey(refreshSecret)
+                    .parseClaimsJws(token)
+                    .getBody();
+
+            return claims.getSubject();
+        } catch (ExpiredJwtException e) {
+            // 令牌已过期，但我们仍然可以从中提取用户名
+            return e.getClaims().getSubject();
+        } catch (JwtException | IllegalArgumentException e) {
+            // 令牌无效
+            throw new IllegalArgumentException("Invalid refresh token", e);
+        }
+    }
+
 }

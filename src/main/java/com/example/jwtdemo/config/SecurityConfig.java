@@ -24,11 +24,13 @@ import java.util.Arrays;
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
+
     @Autowired
     private UserService userService;
 
     @Autowired
     private JwtRequestFilter jwtRequestFilter;
+
 
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
@@ -37,7 +39,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
+        // 为了调试，暂时使用 NoOpPasswordEncoder
         return NoOpPasswordEncoder.getInstance();
+        // 生产环境应使用：return new BCryptPasswordEncoder();
     }
 
     @Bean
@@ -64,7 +68,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
               // 允许所有OPTIONS请求和访问根路径下的所有资源
               .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
               // 允许所有请求访问/authenticate路径，这是登录路径
-              .antMatchers("/authenticate").permitAll()
+              .antMatchers("/authenticate","/refresh").permitAll()
               // 所有其他请求都需要经过身份验证
               .anyRequest().authenticated()
               // 继续配置会话管理

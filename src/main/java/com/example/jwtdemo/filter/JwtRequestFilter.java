@@ -1,5 +1,6 @@
 package com.example.jwtdemo.filter;
 
+import com.example.jwtdemo.service.UserDetailsService;
 import com.example.jwtdemo.service.UserService;
 import com.example.jwtdemo.util.JwtUtil;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -21,7 +22,7 @@ import java.io.IOException;
 public class JwtRequestFilter extends OncePerRequestFilter {
 
     @Autowired
-    private UserService userService;
+    private UserService userDetailsService;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -51,7 +52,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             }
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = this.userService.loadUserByUsername(username);
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 
                 if (jwtUtil.validateToken(jwt, userDetails)) {
                     UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(

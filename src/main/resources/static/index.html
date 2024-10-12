@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JWT Demo with Refresh</title>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
+
 <body>
 <h1>JWT Demo with Refresh</h1>
 <div id="login">
@@ -17,28 +19,40 @@
 <div id="resource" style="display: none;">
     <h2>Protected Resource</h2>
     <button onclick="getResource()">Get Resource</button>
+    <button onclick="refreshTokenManually()">Refresh Token</button>
     <p id="result"></p>
+    <p id="expiresTime"></p>
 </div>
 
 <script>
     let accessToken = '';
     let refreshToken = '';
+    let expiresTime = '';
+    let countdownInterval; // 用于存储倒计时的 interval ID
+    let refreshExpiresTime = '';
 
     const axiosInstance = axios.create();
 
-    // 添加响应拦截器来处理token刷新
+    // 添加响应拦截器来处理 token 刷新
     axiosInstance.interceptors.response.use(
         (response) => response,
         async (error) => {
             const originalRequest = error.config;
-            if (error.response.status === 401 && !originalRequest._retry) {
+            if (error.response.status === 401 &&!originalRequest._retry) {
                 originalRequest._retry = true;
                 try {
                     const refreshResponse = await axios.post('http://localhost:8080/refresh', {}, {
                         headers: { 'Authorization': `Bearer ${refreshToken}` }
                     });
                     accessToken = refreshResponse.data.accessToken;
+                    refreshToken = refreshResponse.data.refreshToken;
+                    expiresTime = refreshResponse.data.expiresTime;
+                    refreshExpiresTime = refreshResponse.data.refreshExpiresTime;
                     originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
+                    // 更新过期时间显示
+                    document.getElementById('expiresTime').innerText = `Token expires in ${expiresTime} seconds.`;
+                    // 重新开始倒计时
+                    startCountdown(refreshExpiresTime);
                     return axiosInstance(originalRequest);
                 } catch (refreshError) {
                     console.error('Token refresh failed:', refreshError);
@@ -58,8 +72,14 @@
             const response = await axios.post('http://localhost:8080/authenticate', { username, password });
             accessToken = response.data.accessToken;
             refreshToken = response.data.refreshToken;
+            expiresTime = response.data.expiresTime;
+            refreshExpiresTime = response.data.refreshExpiresTime;
             document.getElementById('login').style.display = 'none';
             document.getElementById('resource').style.display = 'block';
+            // 显示 expiresTime
+            document.getElementById('expiresTime').innerText = `Token expires in ${expiresTime} seconds.`;
+            // 开始倒计时
+            startCountdown(refreshExpiresTime);
         } catch (error) {
             console.error('Login failed:', error);
             alert('Login failed. Please check your credentials.');
@@ -81,10 +101,57 @@
     function logout() {
         accessToken = '';
         refreshToken = '';
+        expiresTime = '';
+        refreshExpiresTime = '';
         document.getElementById('login').style.display = 'block';
         document.getElementById('resource').style.display = 'none';
         document.getElementById('result').innerText = '';
+        document.getElementById('expiresTime').innerText = '';
+        // 清除可能正在运行的倒计时
+        clearInterval(countdownInterval);
+    }
+
+    function startCountdown(seconds) {
+        // 清除之前的倒计时
+        clearInterval(countdownInterval);
+        const countdownElement = document.getElementById('expiresTime');
+        let diffTime = refreshExpiresTime - expiresTime;
+        countdownInterval = setInterval(() => {
+            if (seconds > 0) {
+                if (seconds > diffTime) {
+                    countdownElement.innerText = `Token expires in ${seconds-diffTime} seconds.`;
+                } else {
+                    countdownElement.innerText = `Token has expired, please click Get Resource Button or Token Refresh Button in ${seconds} seconds.`;
+                }
+                seconds--;
+            } else {
+                clearInterval(countdownInterval);
+                countdownElement.innerText = 'Token has expired. Please log in again.';
+                logout();
+            }
+        }, 1000);
+    }
+
+    async function refreshTokenManually() {
+        try {
+            const refreshResponse = await axios.post('http://localhost:8080/refresh', {}, {
+                headers: { 'Authorization': `Bearer ${refreshToken}` }
+            });
+            accessToken = refreshResponse.data.accessToken;
+            refreshToken = refreshResponse.data.refreshToken;
+            expiresTime = refreshResponse.data.expiresTime;
+            refreshExpiresTime = refreshResponse.data.refreshExpiresTime;
+            // 更新过期时间显示
+            document.getElementById('expiresTime').innerText = `Token expires in ${expiresTime} seconds.`;
+            // 重新开始倒计时
+            startCountdown(refreshExpiresTime);
+        } catch (refreshError) {
+            console.error('Token refresh failed:', refreshError);
+            alert('Token refresh failed. Please try logging in again.');
+            logout();
+        }
     }
 </script>
 </body>
+
 </html>

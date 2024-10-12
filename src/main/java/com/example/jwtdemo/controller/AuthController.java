@@ -6,6 +6,7 @@ import com.example.jwtdemo.service.UserService;
 import com.example.jwtdemo.util.JwtUtil;
 import io.jsonwebtoken.ExpiredJwtException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -31,9 +32,16 @@ public class AuthController {
     @Autowired
     private UserService UserService;
 
+    @Value("${jwt.expiration}")
+    private Long expiresTime; // 获取资源时间
+
+    @Value("${jwt.refresh.expiration}")
+    private Long refreshExpirationTime;  // 刷新时间过期 不能刷新
+
     @PostMapping("/authenticate")
     public ResponseEntity<?> createAuthenticationToken(@RequestBody AuthenticationRequest authenticationRequest) throws Exception {
         try {
+            // 通过 调用 UserService 继承 重写的 loadUserByUsername 检查账号和密码
             Authentication auth = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             authenticationRequest.getUsername(),
@@ -49,7 +57,7 @@ public class AuthController {
         final String accessToken = jwtUtil.generateAccessToken(userDetails);
         final String refreshToken = jwtUtil.generateRefreshToken(userDetails);
 
-        return ResponseEntity.ok(new AuthenticationResponse(accessToken, refreshToken));
+        return ResponseEntity.ok(new AuthenticationResponse(accessToken, refreshToken, expiresTime, refreshExpirationTime));
     }
 
     @PostMapping("/refresh")
@@ -69,7 +77,7 @@ public class AuthController {
                 UserDetails userDetails = UserService.loadUserByUsername(username);
                 String newAccessToken = jwtUtil.generateAccessToken(userDetails);
                 String newRefreshToken = jwtUtil.generateRefreshToken(userDetails);
-                return ResponseEntity.ok(new AuthenticationResponse(newAccessToken, newRefreshToken));
+                return ResponseEntity.ok(new AuthenticationResponse(newAccessToken, newRefreshToken, expiresTime, refreshExpirationTime));
             } else {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid refresh token");
             }

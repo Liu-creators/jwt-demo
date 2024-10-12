@@ -1,6 +1,5 @@
 package com.example.jwtdemo.filter;
 
-import com.example.jwtdemo.service.UserDetailsService;
 import com.example.jwtdemo.service.UserService;
 import com.example.jwtdemo.util.JwtUtil;
 import io.jsonwebtoken.ExpiredJwtException;
